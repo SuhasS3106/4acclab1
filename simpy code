@@ -1,0 +1,64 @@
+import simpy
+import random
+
+class Datacenter:
+    def __init__(self, env, num_vms, mips):
+        self.env = env
+        # simpy.Resource inherently uses a strict First-Come, First-Served (FCFS) queue
+        self.vms = simpy.Resource(env, capacity=num_vms)
+        self.mips = mips  # Million Instructions Per Second (Processing speed)
+
+    def execute_cloudlet(self, mi):
+        """Simulates the time it takes for a VM to process a task."""
+        execution_time = mi / self.mips
+        yield self.env.timeout(execution_time)
+
+def cloudlet_lifecycle(env, datacenter, cloudlet_id, mi):
+    """Models the lifecycle of a task arriving, waiting, and executing."""
+    arrival_time = env.now
+    print(f"[Time {arrival_time:05.2f}] Cloudlet-{cloudlet_id} arrived. (Length: {mi} MI)")
+
+    # Request a VM resource. If all VMs are busy, the task queues automatically via FCFS.
+    with datacenter.vms.request() as request:
+        yield request
+        
+        start_time = env.now
+        wait_time = start_time - arrival_time
+        print(f"[Time {start_time:05.2f}] Cloudlet-{cloudlet_id} started on VM. (Wait Time: {wait_time:.2f}s)")
+        
+        # Execute the task
+        yield env.process(datacenter.execute_cloudlet(mi))
+        
+        finish_time = env.now
+        print(f"[Time {finish_time:05.2f}] Cloudlet-{cloudlet_id} finished. (Total Time: {finish_time - arrival_time:.2f}s)\n")
+
+def workload_generator(env, datacenter, num_cloudlets):
+    """Generates tasks dynamically to simulate a continuous cloud workload."""
+    for i in range(num_cloudlets):
+        # Generate a random task length between 1000 and 5000 MI
+        mi = random.randint(1000, 5000)
+        env.process(cloudlet_lifecycle(env, datacenter, cloudlet_id=i+1, mi=mi))
+        
+        # Introduce a random delay before the next task arrives to simulate real-world traffic
+        yield env.timeout(random.uniform(0.5, 2.0))
+
+# ==========================================
+# Main Execution
+# ==========================================
+if __name__ == "__main__":
+    print("=== Starting Cloud FCFS Scheduling Simulation ===\n")
+    
+    # Initialize the simulation environment
+    env = simpy.Environment()
+    
+    # Create a Datacenter with 2 VMs, each processing at 1000 MIPS
+    NUM_VMS = 2
+    VM_MIPS = 1000
+    datacenter = Datacenter(env, num_vms=NUM_VMS, mips=VM_MIPS)
+    
+    # Generate 5 tasks to test the FCFS scheduler
+    NUM_TASKS = 5
+    env.process(workload_generator(env, datacenter, num_cloudlets=NUM_TASKS))
+    
+    # Run the simulation
+    env.run()
