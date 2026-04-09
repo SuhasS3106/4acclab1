@@ -1,0 +1,122 @@
+Git can definitely feel like a trap sometimes, even when you are working entirely on your own. When you don't have a team constantly shifting the codebase, the errors you encounter usually stem from out-of-sync local and remote states, or simple misclicks. 
+
+Here is a breakdown of the most common errors you will run into as a solo developer with those core commands, and exactly how to fix them.
+
+### **`git remote add origin`**
+
+**Error: `fatal: remote origin already exists.`**
+This happens when you clone a repository that already has an origin, or you accidentally run the command twice. 
+
+**The Fix:**
+If you just need to change where `origin` points:
+```bash
+git remote set-url origin <new-url>
+```
+
+If you want to completely remove the old one and add the new one:
+```bash
+git remote remove origin
+git remote add origin <new-url>
+```
+
+---
+
+### **`git add`**
+
+**Issue: You accidentally added a file you didn't want to track (like a `.env` file or a massive binary).**
+If you haven't committed yet, it is still in the "staging" area.
+
+**The Fix:**
+```bash
+git restore --staged <file-name>
+```
+
+**Issue: `The following paths are ignored by one of your .gitignore files`**
+You are trying to add a file, but Git is explicitly ignoring it based on your rules.
+
+**The Fix:**
+If you are absolutely sure you want to track it despite the `.gitignore` rule:
+```bash
+git add -f <file-name>
+```
+
+---
+
+### **`git commit`**
+
+**Issue: You made a typo in your commit message, or you forgot to stage a specific file that should have been in that commit.**
+
+**The Fix:**
+Stage the forgotten file (if applicable), then amend the previous commit. 
+```bash
+git add <forgotten-file>
+git commit --amend -m "Your corrected commit message"
+```
+
+**Issue: You committed way too early and want to undo the commit entirely, but keep your code changes.**
+
+**The Fix:**
+```bash
+git reset --soft HEAD~1
+```
+
+---
+
+### **`git fetch` and `git pull`**
+
+**Error: `fatal: refusing to merge unrelated histories`**
+This is a classic solo developer issue. It happens when you create a repository on GitHub (and initialize it with a README) and also initialize a Git repository locally. When you try to pull, Git sees two completely separate project histories and panics.
+
+**The Fix:**
+```bash
+git pull origin main --allow-unrelated-histories
+```
+
+**Error: Merge Conflicts (`Automatic merge failed; fix conflicts and then commit the result.`)**
+Even working alone, if you edit a file on GitHub directly and then edit the same lines locally, pulling will cause a conflict.
+
+**The Fix:**
+Open the conflicting file in your editor. Look for the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`). Delete the markers, keep the code you want, and then run:
+```bash
+git add <resolved-file>
+git commit --no-edit
+```
+
+---
+
+### **`git push`**
+
+**Error: `Updates were rejected because the remote contains work that you do not have locally.`**
+You changed something on your remote repository (like accepting a Dependabot PR or editing a file in the browser), and your local repository is out of date. Git blocks the push to prevent you from overwriting the remote changes.
+
+**The Fix:**
+Pull the changes down first, then push.
+```bash
+git pull origin main
+git push origin main
+```
+
+**Error: You need to forcefully overwrite the remote repository.**
+Sometimes, you completely mess up your local history, fix it using a rebase or a reset, and now your remote and local are entirely out of sync. As a solo developer, you have the luxury of just overwriting the remote.
+
+**The Fix:**
+```bash
+git push origin main --force
+```
+
+---
+
+### **The Ultimate Solo Developer Safety Net**
+
+**Issue: You ran a command, everything broke, files disappeared, and you don't know how to get back to where you were 10 minutes ago.**
+
+**The Fix:**
+Git keeps a secret diary of every single movement your `HEAD` makes, even if you delete branches or reset commits. Use the reflog to find the state before you made the mistake.
+
+```bash
+git reflog
+```
+Find the index of the state you want to return to (e.g., `HEAD@{2}`), and forcefully reset to it:
+```bash
+git reset --hard HEAD@{2}
+```
